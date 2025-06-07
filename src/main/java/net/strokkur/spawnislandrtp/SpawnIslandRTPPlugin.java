@@ -74,6 +74,6 @@ public final class SpawnIslandRTPPlugin extends JavaPlugin implements Listener {
             return;
         }
 
-        HelperRTP.tp(event.getPlayer(), this.world, null, RTP_TYPE.ADDON);
+        HelperRTP.tp(event.getPlayer(), event.getPlayer(), this.world, null, RTP_TYPE.FORCED, true, true);
     }
 }

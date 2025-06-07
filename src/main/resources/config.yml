@@ -1,0 +1,8 @@
+# This incredibly tiny config declares the y value from which the player gets RTPed from.
+# It also describes which world should listen to, printing an error if the world does not exist
+
+# The y coordinate from which to teleport
+min-y: 0
+
+# The world to listen for
+world: world

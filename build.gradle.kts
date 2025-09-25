@@ -17,6 +17,12 @@ dependencies {
   compileOnly("net.strokkur", "betterrtp", "3.6.13") // <-- Yes, this is a manual upload because their repo went down
 }
 
+java {
+  toolchain.languageVersion = JavaLanguageVersion.of(21)
+  targetCompatibility = JavaVersion.VERSION_21
+  sourceCompatibility = JavaVersion.VERSION_21
+}
+
 tasks {
   runServer {
     minecraftVersion("1.21.5")

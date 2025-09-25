@@ -12,12 +12,15 @@ import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
 import net.kyori.adventure.key.Key;
+import org.bukkit.PortalType;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPortalEnterEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.checkerframework.common.value.qual.EnumVal;
 import org.intellij.lang.annotations.Subst;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -72,20 +75,34 @@ public final class SpawnIslandRTPPlugin extends JavaPlugin implements Listener {
   }
 
   @EventHandler
-  void onFallBelowMinY(PlayerMoveEvent event) {
-    final World configWorld = this.getWorld();
+  void onFallBelowMinY(final PlayerMoveEvent event) {
+    this.rtp(event.getPlayer(), event.getTo().y(), event.getTo().getWorld());
+  }
 
-    if (configWorld == null || configWorld != event.getTo().getWorld()) {
+  @EventHandler
+  void onEnterEndPortal(final EntityPortalEnterEvent event) {
+    if (!(event.getEntity() instanceof Player player)) {
       return;
     }
 
-    if (event.getTo().y() > this.minY) {
+    if (event.getPortalType() == PortalType.ENDER) {
+      // The y values does not matter in this case
+      this.rtp(player, this.minY - 1, event.getLocation().getWorld());
+    }
+  }
+
+  private void rtp(final Player player, final double y, final World currentWorld) {
+    final World configWorld = this.getWorld();
+
+    if (configWorld != currentWorld) {
+      return;
+    }
+
+    if (y > this.minY) {
       return;
     }
 
     // This logic is yanked from HelperRTP.tp because I do not want it to send any error messages.
-    final Player player = event.getPlayer();
-
     final boolean ignoreCooldown = true;
     final boolean ignoreDelay = true;
 

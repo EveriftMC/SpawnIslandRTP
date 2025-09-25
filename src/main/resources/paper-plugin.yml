@@ -10,7 +10,7 @@ permissions:
   spawnislandrtp.command:
     description: Permission for /spawnislandrtp
     default: op
-    
+
 dependencies:
   server:
     BetterRTP:

@@ -11,24 +11,23 @@ import me.SuperRonanCraft.BetterRTP.player.rtp.RTP_TYPE;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP;
 import me.SuperRonanCraft.BetterRTP.references.helpers.HelperRTP_Check;
 import me.SuperRonanCraft.BetterRTP.references.rtpinfo.worlds.WorldPlayer;
-import org.bukkit.Bukkit;
-import org.bukkit.NamespacedKey;
+import net.kyori.adventure.key.Key;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.intellij.lang.annotations.Subst;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-
-import java.util.Optional;
 
 @SuppressWarnings("UnstableApiUsage")
 @NullMarked
 public final class SpawnIslandRTPPlugin extends JavaPlugin implements Listener {
 
   private int minY = 0;
+  private @Nullable Key worldKey;
   private @Nullable World world;
 
   @Override
@@ -50,36 +49,33 @@ public final class SpawnIslandRTPPlugin extends JavaPlugin implements Listener {
 
   @Override
   public void onEnable() {
-    Bukkit.getPluginManager().registerEvents(this, this);
-    reload();
+    this.getServer().getPluginManager().registerEvents(this, this);
+    this.reload();
   }
 
   void reload() {
     this.saveDefaultConfig();
     minY = this.getConfig().getInt("min-y");
 
-    String worldName = this.getConfig().getString("world");
-    Optional<World> world = Optional.ofNullable(worldName)
-        .map(NamespacedKey::fromString)
-        .map(Bukkit::getWorld);
-
-    if (world.isEmpty()) {
-      this.getComponentLogger().warn("Failed to find world for {}. Please define a valid world!", worldName);
-    } else {
-      this.world = world.get();
+    final @Subst("key:value") String worldName = this.getConfig().getString("world");
+    if (!Key.parseable(worldName)) {
+      this.getSLF4JLogger().warn("World '{}' is in the invalid format! Expected a key.", worldName);
+      this.worldKey = null;
+      if (this.world != null) {
+        this.getSLF4JLogger().warn("Defaulting to the previously declared world '{}'.", world.getName());
+      }
+      return;
     }
 
-    String finalWorldName = this.world == null ? "null" : this.world.getName();
-    this.getComponentLogger().info("Successfully loaded world {} and min-y {}.", finalWorldName, minY);
+    this.worldKey = Key.key(worldName);
+    this.world = null;
   }
 
   @EventHandler
   void onFallBelowMinY(PlayerMoveEvent event) {
-    if (this.world == null) {
-      return;
-    }
+    final World configWorld = this.getWorld();
 
-    if (this.world != event.getTo().getWorld()) {
+    if (configWorld == null || configWorld != event.getTo().getWorld()) {
       return;
     }
 
@@ -88,22 +84,40 @@ public final class SpawnIslandRTPPlugin extends JavaPlugin implements Listener {
     }
 
     // This logic is yanked from HelperRTP.tp because I do not want it to send any error messages.
-    Player player = event.getPlayer();
+    final Player player = event.getPlayer();
 
-    boolean ignoreCooldown = true;
-    boolean ignoreDelay = true;
+    final boolean ignoreCooldown = true;
+    final boolean ignoreDelay = true;
 
-    RTP_PlayerInfo playerInfo = new RTP_PlayerInfo(!ignoreDelay, true, !ignoreCooldown);
-    World world = HelperRTP.getActualWorld(player, this.world, null);
-    RTPSetupInformation setup_info = new RTPSetupInformation(world, player, player, true, null, RTP_TYPE.FORCED, null, playerInfo);
+    final RTP_PlayerInfo playerInfo = new RTP_PlayerInfo(!ignoreDelay, true, !ignoreCooldown);
+    final World world = HelperRTP.getActualWorld(player, configWorld, null);
+    final RTPSetupInformation setup_info = new RTPSetupInformation(world, player, player, true, null, RTP_TYPE.FORCED, null, playerInfo);
 
-    WorldPlayer pWorld = HelperRTP.getPlayerWorld(setup_info);
-    RTP_ERROR_REQUEST_REASON cantReason = HelperRTP_Check.canRTP(player, player, pWorld, setup_info.getPlayerInfo());
+    final WorldPlayer pWorld = HelperRTP.getPlayerWorld(setup_info);
+    final RTP_ERROR_REQUEST_REASON cantReason = HelperRTP_Check.canRTP(player, player, pWorld, setup_info.getPlayerInfo());
 
     if (cantReason != null) {
       return;
     }
 
     BetterRTP.getInstance().getRTP().start(pWorld);
+  }
+
+  private @Nullable World getWorld() {
+    if (this.world != null) {
+      return this.world;
+    }
+    if (this.worldKey == null) {
+      return null;
+    }
+
+    final World out = this.getServer().getWorld(this.worldKey);
+    if (out == null) {
+      this.getSLF4JLogger().warn("Failed to find world with key '{}'.", this.worldKey.asMinimalString());
+      return null;
+    }
+
+    this.world = out;
+    return out;
   }
 }
